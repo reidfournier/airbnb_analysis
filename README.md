@@ -1,7 +1,7 @@
 # Airbnb Market Analysis: Columbus vs New York
 
 ## Author
-[Your Name]
+[Reid Fournier]
 
 ## Project Overview
 This project analyzes Airbnb listing data to compare the Columbus, Ohio and New York City markets. The goal is to [briefly describe what decisions your analysis could support].
