@@ -4,7 +4,7 @@
 [Reid Fournier]
 
 ## Project Overview
-This project analyzes Airbnb listing data to compare the Columbus, Ohio and New York City markets. The goal is to [briefly describe what decisions your analysis could support].
+This project analyzes Airbnb listing data to compare the Columbus, Ohio and New York City markets. The goal is to help a prospective host or investor decide which market offers stronger return potential, informing decisions on pricing strategy, listing type, and neighborhood selection based on real demand, competition, and host concentration patterns in each city.
 
 ## Research Questions
 
