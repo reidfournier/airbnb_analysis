@@ -1,7 +1,10 @@
 """
 Airbnb Market Analysis: Columbus vs New York City
-Answers the 5 research questions from the project README using real
-Inside Airbnb data (Columbus snapshot 2025-09-26, NYC snapshot 2026-06-14 (Dec 4 2025 snapshot had no price data at all, so a more recent NYC snapshot with real pricing was used instead)).
+
+My analysis answering the 5 research questions from my project README, using
+real Inside Airbnb data (Columbus snapshot 2025-09-26, NYC snapshot 2026-06-14 --
+I originally planned to use the Dec 4 2025 NYC snapshot, but it had no price
+data at all, so I switched to a more recent NYC snapshot with real pricing).
 """
 import pandas as pd
 import numpy as np
@@ -96,13 +99,13 @@ plt.close()
 
 # ---------- Q3: host concentration ----------
 def host_concentration(df, city):
-    # host_total_listings_count is entirely redacted for NYC in Inside Airbnb's
-    # published data (a known effect of NYC Local Law 18 reporting restrictions),
-    # so for any city where that field is unusable we fall back to counting how
-    # many listings each host_id actually appears with IN THIS DATASET as the
-    # concentration proxy instead. This is real, computed data either way - just
-    # two different (clearly labeled) methodologies depending on what the source
-    # data makes available for that city.
+    # I found host_total_listings_count is entirely redacted for NYC in Inside
+    # Airbnb's published data (a known effect of NYC Local Law 18 reporting
+    # restrictions), so for any city where that field is unusable I fall back
+    # to counting how many listings each host_id actually appears with IN THIS
+    # DATASET as the concentration proxy instead. This is real, computed data
+    # either way - just two different (clearly labeled) methodologies depending
+    # on what the source data makes available for that city.
     if df["host_total_listings_count"].notna().sum() > 0:
         method = "host_total_listings_count field"
         hosts = df.drop_duplicates("host_id")[["host_id", "host_total_listings_count"]].copy()

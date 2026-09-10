@@ -4,7 +4,7 @@
 [Reid Fournier]
 
 ## Project Overview
-This project analyzes Airbnb listing data to compare the Columbus, Ohio and New York City markets. The goal is to help a prospective host or investor decide which market offers stronger return potential, informing decisions on pricing strategy, listing type, and neighborhood selection based on real demand, competition, and host concentration patterns in each city.
+I built this to compare the Columbus, Ohio and New York City Airbnb markets using real listing data. My goal was to help a prospective host or investor decide which market offers stronger return potential, informing decisions on pricing strategy, listing type, and neighborhood selection based on real demand, competition, and host concentration patterns in each city.
 
 ## Research Questions
 
@@ -26,15 +26,17 @@ This project analyzes Airbnb listing data to compare the Columbus, Ohio and New 
 
 ## Data Overview
 - **Columbus, Ohio:** 2,877 listings (as of Sept 26, 2025)
-- **New York City:** 30,259 listings (as of Jun 14, 2026 -- the originally planned Dec 4, 2025 NYC snapshot had price and host-listing-count data fully redacted, a known effect of NYC's Local Law 18 reporting rules; this is the nearest snapshot with usable pricing data)
+- **New York City:** 30,259 listings (as of Jun 14, 2026 -- I originally planned to use the Dec 4, 2025 NYC snapshot, but found its price and host-listing-count data fully redacted, a known effect of NYC's Local Law 18 reporting rules, so I used the nearest snapshot with usable pricing data instead)
 - **Primary data source:** [Inside Airbnb](http://insideairbnb.com/get-the-data)
 - **Full analysis:** [airbnb_analysis.ipynb](airbnb_analysis.ipynb) (also runnable as [analysis.py](analysis.py))
 
 ## Key Findings
 
+Here's what I found:
+
 **1. Price by neighborhood** -- NYC's overall average nightly price (~$253) is nearly double Columbus's (~$137). Priciest NYC areas run well above Columbus's priciest (Hayden Run, ~$243).
 
-**2. Availability vs price** -- In both cities, the best availability-per-dollar neighborhoods are outer, less-central ones (Greenlawn/Frank Road in Columbus; Co-op City and Olinville in NYC).
+**2. Availability vs price** -- In both cities, I found the best availability-per-dollar neighborhoods are outer, less-central ones (Greenlawn/Frank Road in Columbus; Co-op City and Olinville in NYC).
 
 **3. Host concentration** -- Columbus: only 36% of hosts run a single listing, and multi-listing hosts control 86.5% of all Columbus listings. NYC: hosts with more than one listing in the dataset account for 62.7% of listings.
 
