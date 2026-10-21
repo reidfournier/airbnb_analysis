@@ -2,33 +2,58 @@
 
 [Reid Fournier](https://github.com/reidfournier). Miami University.
 
-Two Inside Airbnb files.
+Inside Airbnb. [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/).
 
-- Columbus: 2,877 listings. September 26, 2025.
-- New York: 30,259 listings. June 14, 2026.
+- Columbus: 2,959 listings. September 22, 2026.
+- New York: 29,918 listings. September 14, 2026.
 
-The December 4, 2025 New York file had no prices. That is Local Law 18. I used the June 14, 2026 file.
+325 Columbus listings and 10,512 New York listings have no price. The price figures use the rest. Each city then drops the cheapest and dearest 0.5%. Columbus keeps 2,606 listings. New York keeps 19,211.
 
-Inside Airbnb has newer files. Columbus is September 22, 2026. New York is September 14, 2026. This page is the older pair.
+The bathroom count is read from the bathroom text. The bathrooms column is empty in both files. The host-total column is empty in both files. Hosts are counted with `calculated_host_listings_count`, the host's listings in that city. A neighborhood enters a rank only when it has 30 or more priced listings.
 
-The prices below drop listings at $0 and the cheapest and dearest 0.5% in each city. The figures are means.
+## Price
 
-## What the files show
+The typical night is the median.
 
-New York's mean night is $252.62. Columbus is $137.12.
+Columbus median: $163. Mean: $205.49.
 
-Hayden Run leads Columbus at $242.75. Fort Wadsworth leads New York at $1,010.33. That ranking has no minimum number of listings. A small neighborhood can lead.
+New York median: $182.46. Mean: $283.29.
 
-Guest capacity tracks price. In Columbus the correlation is 0.65. In New York it is 0.49. Bedrooms and bathrooms come next. Review count does not.
+The earlier page used the September 26, 2025 Columbus file and the June 14, 2026 New York file. Those means were $137.12 and $252.62.
 
-Columbus is 83.7% entire homes. New York is 53.7% entire homes, 43.3% private rooms, and 2.2% hotel rooms. A New York hotel room averages $549.21.
+Neighborhoods with 30 or more priced listings:
 
-## What the files do not show
+- Columbus: Far Northwest $246.50 (30 listings), Clintonville $190.83 (96), Near North/University $179.25 (764).
+- New York: Tribeca $603.70 (69), Financial District $569.50 (318), SoHo $567 (142).
 
-There is no revenue, no occupancy, and no expenses. Open nights are not booked nights. A neighborhood with many open nights and a low price is often an empty calendar.
+## Calendars
 
-The host figures use two methods. Columbus uses each host's total listings anywhere. 36.2% of those hosts have one listing. Hosts with more than one listing anywhere hold 86.5% of the Columbus rows. New York's total-listings field is empty. The New York figure counts hosts inside this file only. 62.7% of New York rows belong to a host who appears more than once here. Those two percentages are not the same measure.
+Open nights are not booked nights.
 
-## Files
+The median listing is open 283 nights in Columbus and 227 nights in New York.
 
-The notebook and the five charts are the record. `analysis.py` points at a data folder on my computer. That folder is not in this repo.
+Among neighborhoods with 30 or more priced listings, Franklinton leads Columbus at 327.5 open nights. The median price there is $162. Wakefield leads New York at 358 open nights. The median price there is $97.23. The next neighborhoods sit close behind. A high bar on that chart is an empty calendar.
+
+## Hosts
+
+The count is the same kind in both cities.
+
+Columbus has 1,023 hosts. 61.1% have one listing in the city. Hosts with more than one listing hold 78.9% of the rows.
+
+New York has 16,148 hosts. 80.2% have one listing in the city. Hosts with more than one listing hold 56.7% of the rows.
+
+## Rooms
+
+Columbus is 81.8% entire homes and 17.3% private rooms.
+
+New York is 54.8% entire homes, 43.0% private rooms, and 1.5% hotel rooms.
+
+On the priced listings, a Columbus entire home has a median night of $181.50. A New York entire home has a median night of $216.98. A New York hotel room has a median night of $623, across 407 listings. Columbus has 24 hotel rooms in the priced set. Their median is $161.08.
+
+Guest capacity tracks price. The correlation is 0.641 in Columbus and 0.422 in New York. Bedrooms and the bathroom count come next. Review count does not.
+
+## Run
+
+`analysis.py` downloads the two files into `data/` and writes the five charts. The listing files are not in this repo.
+
+The files are the September 22, 2026 Columbus extract and the September 14, 2026 New York extract from [Inside Airbnb](https://insideairbnb.com/get-the-data/).
