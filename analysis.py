@@ -1,200 +1,255 @@
-"""
-Airbnb Market Analysis: Columbus vs New York City
+"""Columbus and New York listings from Inside Airbnb.
 
-My analysis answering the 5 research questions from my project README, using
-real Inside Airbnb data (Columbus snapshot 2025-09-26, NYC snapshot 2026-06-14 --
-I originally planned to use the Dec 4 2025 NYC snapshot, but it had no price
-data at all, so I switched to a more recent NYC snapshot with real pricing).
+Columbus file: 22 September 2026.
+New York file: 14 September 2026.
+Source: https://insideairbnb.com/get-the-data/
+License: Creative Commons Attribution 4.0.
+
+The files are not stored in the repo. A run downloads them into data/.
 """
-import pandas as pd
-import numpy as np
+
+import json
+import os
+import re
+from pathlib import Path
+
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
-pd.set_option("display.width", 120)
+ROOT = Path(__file__).resolve().parent
+DATA = ROOT / "data"
+OUT = ROOT
+MIN_N = 30
 
-DATA_DIR = "C:/Users/redre/AppData/Local/Temp/claude/airbnb_analysis/data"
-OUT_DIR = "C:/Users/redre/AppData/Local/Temp/claude/airbnb_analysis/output"
-import os
-os.makedirs(OUT_DIR, exist_ok=True)
+FILES = {
+    "Columbus": (
+        "columbus.csv.gz",
+        "https://data.insideairbnb.com/united-states/oh/columbus/2026-09-22/data/listings.csv.gz",
+        "2026-09-22",
+    ),
+    "New York": (
+        "nyc.csv.gz",
+        "https://data.insideairbnb.com/united-states/ny/new-york-city/2026-09-14/data/listings.csv.gz",
+        "2026-09-14",
+    ),
+}
 
-def load_and_clean(path, city_label):
+BATH_RE = re.compile(r"(\d+(?:\.\d+)?)")
+
+
+def ensure_files():
+    DATA.mkdir(exist_ok=True)
+    for _city, (name, url, _date) in FILES.items():
+        path = DATA / name
+        if path.exists() and path.stat().st_size > 0:
+            continue
+        import urllib.request
+
+        urllib.request.urlretrieve(url, path)
+
+
+def bath_count(value):
+    if pd.isna(value):
+        return np.nan
+    match = BATH_RE.search(str(value))
+    if not match:
+        return np.nan
+    return float(match.group(1))
+
+
+def load_raw(path):
     df = pd.read_csv(path, low_memory=False)
-    # price comes in as "$123.00" strings
     df["price_clean"] = (
-        df["price"].astype(str).str.replace(r"[\$,]", "", regex=True).astype(float)
+        df["price"].astype(str).str.replace(r"[\$,]", "", regex=True).replace("nan", np.nan)
     )
-    # drop rows with no price or absurd outliers (top/bottom 0.5% and $0 listings)
-    df = df[df["price_clean"] > 0]
-    lo, hi = df["price_clean"].quantile([0.005, 0.995])
-    df = df[(df["price_clean"] >= lo) & (df["price_clean"] <= hi)]
-    df["city"] = city_label
+    df["price_clean"] = pd.to_numeric(df["price_clean"], errors="coerce")
+    df["bath_n"] = df["bathrooms_text"].map(bath_count)
     return df
 
-col = load_and_clean(f"{DATA_DIR}/columbus_listings.csv", "Columbus")
-nyc = load_and_clean(f"{DATA_DIR}/nyc_listings.csv", "New York City")
 
-raw_col_n = len(pd.read_csv(f"{DATA_DIR}/columbus_listings.csv", low_memory=False))
-raw_nyc_n = len(pd.read_csv(f"{DATA_DIR}/nyc_listings.csv", low_memory=False))
+def clean_prices(df):
+    priced = df[df["price_clean"] > 0].copy()
+    lo, hi = priced["price_clean"].quantile([0.005, 0.995])
+    kept = priced[(priced["price_clean"] >= lo) & (priced["price_clean"] <= hi)].copy()
+    return kept, float(lo), float(hi)
 
-print(f"RAW_COUNT_COLUMBUS={raw_col_n}")
-print(f"RAW_COUNT_NYC={raw_nyc_n}")
-print(f"CLEAN_COUNT_COLUMBUS={len(col)}")
-print(f"CLEAN_COUNT_NYC={len(nyc)}")
 
-# ---------- Q1: avg nightly price by neighborhood ----------
-col_price_by_neigh = col.groupby("neighbourhood_cleansed")["price_clean"].mean().sort_values(ascending=False)
-nyc_price_by_neigh = nyc.groupby("neighbourhood_cleansed")["price_clean"].mean().sort_values(ascending=False)
-
-print("\n=== Q1: Avg price by neighborhood (top 5) ===")
-print("Columbus top 5:\n", col_price_by_neigh.head(5))
-print("Columbus overall avg: ${:.2f}".format(col["price_clean"].mean()))
-print("NYC top 5:\n", nyc_price_by_neigh.head(5))
-print("NYC overall avg: ${:.2f}".format(nyc["price_clean"].mean()))
-
-fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-col_price_by_neigh.head(10).plot(kind="barh", ax=axes[0], color="#2b6cb0")
-axes[0].set_title("Columbus: Avg Price by Neighborhood (Top 10)")
-axes[0].set_xlabel("Avg nightly price ($)")
-axes[0].invert_yaxis()
-nyc_price_by_neigh.head(10).plot(kind="barh", ax=axes[1], color="#c05621")
-axes[1].set_title("NYC: Avg Price by Neighborhood (Top 10)")
-axes[1].set_xlabel("Avg nightly price ($)")
-axes[1].invert_yaxis()
-plt.tight_layout()
-plt.savefig(f"{OUT_DIR}/01_price_by_neighborhood.png", dpi=120)
-plt.close()
-
-# ---------- Q2: availability vs price by neighborhood ----------
-col_avail = col.groupby("neighbourhood_cleansed").agg(
-    avg_price=("price_clean", "mean"), avg_availability=("availability_365", "mean"), n=("id", "count")
-)
-col_avail = col_avail[col_avail["n"] >= 5]
-col_avail["avail_per_dollar"] = col_avail["avg_availability"] / col_avail["avg_price"]
-col_avail = col_avail.sort_values("avail_per_dollar", ascending=False)
-
-nyc_avail = nyc.groupby("neighbourhood_cleansed").agg(
-    avg_price=("price_clean", "mean"), avg_availability=("availability_365", "mean"), n=("id", "count")
-)
-nyc_avail = nyc_avail[nyc_avail["n"] >= 5]
-nyc_avail["avail_per_dollar"] = nyc_avail["avg_availability"] / nyc_avail["avg_price"]
-nyc_avail = nyc_avail.sort_values("avail_per_dollar", ascending=False)
-
-print("\n=== Q2: Best availability-per-dollar neighborhoods (top 5) ===")
-print("Columbus:\n", col_avail.head(5)[["avg_price", "avg_availability", "avail_per_dollar"]])
-print("NYC:\n", nyc_avail.head(5)[["avg_price", "avg_availability", "avail_per_dollar"]])
-
-fig, ax = plt.subplots(figsize=(8, 6))
-ax.scatter(col["price_clean"], col["availability_365"], alpha=0.15, s=8, label="Columbus", color="#2b6cb0")
-ax.scatter(nyc["price_clean"], nyc["availability_365"], alpha=0.08, s=8, label="New York City", color="#c05621")
-ax.set_xlim(0, 600)
-ax.set_xlabel("Nightly price ($)")
-ax.set_ylabel("Availability (days/365)")
-ax.set_title("Price vs Availability")
-ax.legend()
-plt.tight_layout()
-plt.savefig(f"{OUT_DIR}/02_price_vs_availability.png", dpi=120)
-plt.close()
-
-# ---------- Q3: host concentration ----------
-def host_concentration(df, city):
-    # I found host_total_listings_count is entirely redacted for NYC in Inside
-    # Airbnb's published data (a known effect of NYC Local Law 18 reporting
-    # restrictions), so for any city where that field is unusable I fall back
-    # to counting how many listings each host_id actually appears with IN THIS
-    # DATASET as the concentration proxy instead. This is real, computed data
-    # either way - just two different (clearly labeled) methodologies depending
-    # on what the source data makes available for that city.
-    if df["host_total_listings_count"].notna().sum() > 0:
-        method = "host_total_listings_count field"
-        hosts = df.drop_duplicates("host_id")[["host_id", "host_total_listings_count"]].copy()
-        hosts["host_total_listings_count"] = hosts["host_total_listings_count"].fillna(1)
-        single = (hosts["host_total_listings_count"] <= 1).sum()
-        multi = (hosts["host_total_listings_count"] > 1).sum()
-        multi_host_ids = hosts[hosts["host_total_listings_count"] > 1]["host_id"]
+def host_split(df):
+    field = "calculated_host_listings_count"
+    usable = df[field].notna().mean() if field in df.columns else 0
+    hosts = df.drop_duplicates("host_id")
+    if usable > 0.5:
+        method = "calculated_host_listings_count"
+        single = int((hosts[field] <= 1).sum())
+        multi = int((hosts[field] > 1).sum())
+        multi_ids = set(hosts.loc[hosts[field] > 1, "host_id"])
     else:
-        method = "listings observed per host_id in this dataset"
+        method = "host_id counted inside this file"
         counts = df["host_id"].value_counts()
-        single = (counts == 1).sum()
-        multi = (counts > 1).sum()
-        multi_host_ids = counts[counts > 1].index
+        single = int((counts == 1).sum())
+        multi = int((counts > 1).sum())
+        multi_ids = set(counts[counts > 1].index)
+    share = float(df["host_id"].isin(multi_ids).mean() * 100)
+    anywhere = None
+    if "host_total_listings_count" in df.columns and df["host_total_listings_count"].notna().mean() > 0.5:
+        anywhere_hosts = hosts.dropna(subset=["host_total_listings_count"])
+        anywhere = {
+            "single_host_pct": round(float((anywhere_hosts["host_total_listings_count"] <= 1).mean() * 100), 1),
+            "listings_held_by_multi_pct": round(
+                float(df["host_id"].isin(
+                    set(anywhere_hosts.loc[anywhere_hosts["host_total_listings_count"] > 1, "host_id"])
+                ).mean() * 100),
+                1,
+            ),
+        }
     total = single + multi
-    listings_by_multi = df[df["host_id"].isin(multi_host_ids)].shape[0]
-    pct_listings_multi = listings_by_multi / len(df) * 100
-    print(f"{city} [method: {method}]: {total} unique hosts | single-listing hosts: {single} ({single/total*100:.1f}%) | "
-          f"multi-listing hosts: {multi} ({multi/total*100:.1f}%) | "
-          f"% of ALL listings owned by multi-listing hosts: {pct_listings_multi:.1f}%")
-    return single, multi, pct_listings_multi
+    return {
+        "method": method,
+        "hosts": total,
+        "single_host_pct": round(single / total * 100, 1),
+        "multi_host_pct": round(multi / total * 100, 1),
+        "listings_held_by_multi_pct": round(share, 1),
+        "anywhere": anywhere,
+        "single": single,
+        "multi": multi,
+    }
 
-print("\n=== Q3: Host ownership concentration ===")
-col_single, col_multi, col_pct = host_concentration(col, "Columbus")
-nyc_single, nyc_multi, nyc_pct = host_concentration(nyc, "NYC")
 
-fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-axes[0].pie([col_single, col_multi], labels=["Single-listing hosts", "Multi-listing hosts"],
-            autopct="%1.0f%%", colors=["#2b6cb0", "#90cdf4"])
-axes[0].set_title("Columbus Host Concentration")
-axes[1].pie([nyc_single, nyc_multi], labels=["Single-listing hosts", "Multi-listing hosts"],
-            autopct="%1.0f%%", colors=["#c05621", "#fbd38d"])
-axes[1].set_title("NYC Host Concentration")
-plt.tight_layout()
-plt.savefig(f"{OUT_DIR}/03_host_concentration.png", dpi=120)
-plt.close()
+def neighborhood_table(df):
+    table = df.groupby("neighbourhood_cleansed").agg(
+        n=("id", "count"),
+        median_price=("price_clean", "median"),
+        mean_price=("price_clean", "mean"),
+        median_open=("availability_365", "median"),
+    )
+    return table[table["n"] >= MIN_N].sort_values("median_price", ascending=False)
 
-# ---------- Q4: drivers of higher prices ----------
-def price_drivers(df, city):
-    features = ["accommodates", "bedrooms", "bathrooms", "number_of_reviews", "review_scores_rating"]
-    avail = [f for f in features if f in df.columns]
-    corr = df[avail + ["price_clean"]].corr(numeric_only=True)["price_clean"].drop("price_clean").sort_values(ascending=False)
-    print(f"{city} correlation with price:\n{corr}")
-    room_type_price = df.groupby("room_type")["price_clean"].mean().sort_values(ascending=False)
-    print(f"{city} avg price by room type:\n{room_type_price}\n")
-    return corr, room_type_price
 
-print("\n=== Q4: Drivers of higher prices ===")
-col_corr, col_rt_price = price_drivers(col, "Columbus")
-nyc_corr, nyc_rt_price = price_drivers(nyc, "NYC")
+def price_drivers(df):
+    cols = ["accommodates", "bedrooms", "bath_n", "number_of_reviews", "review_scores_rating", "price_clean"]
+    corr = df[cols].corr(numeric_only=True)["price_clean"].drop("price_clean").sort_values(ascending=False)
+    by_room = df.groupby("room_type")["price_clean"].agg(["median", "mean", "count"]).sort_values("median", ascending=False)
+    return corr, by_room
 
-fig, ax = plt.subplots(figsize=(9, 5))
-x = np.arange(len(col_rt_price.index.union(nyc_rt_price.index)))
-labels = sorted(set(col_rt_price.index) | set(nyc_rt_price.index))
-col_vals = [col_rt_price.get(l, 0) for l in labels]
-nyc_vals = [nyc_rt_price.get(l, 0) for l in labels]
-width = 0.35
-xpos = np.arange(len(labels))
-ax.bar(xpos - width/2, col_vals, width, label="Columbus", color="#2b6cb0")
-ax.bar(xpos + width/2, nyc_vals, width, label="NYC", color="#c05621")
-ax.set_xticks(xpos)
-ax.set_xticklabels(labels, rotation=20, ha="right")
-ax.set_ylabel("Avg nightly price ($)")
-ax.set_title("Avg Price by Room Type")
-ax.legend()
-plt.tight_layout()
-plt.savefig(f"{OUT_DIR}/04_price_by_room_type.png", dpi=120)
-plt.close()
 
-# ---------- Q5: room type distribution ----------
-col_rt_dist = col["room_type"].value_counts(normalize=True) * 100
-nyc_rt_dist = nyc["room_type"].value_counts(normalize=True) * 100
-print("\n=== Q5: Room type distribution (%) ===")
-print("Columbus:\n", col_rt_dist)
-print("NYC:\n", nyc_rt_dist)
+def room_mix(df):
+    return (df["room_type"].value_counts(normalize=True) * 100).round(1)
 
-fig, ax = plt.subplots(figsize=(8, 6))
-labels5 = sorted(set(col_rt_dist.index) | set(nyc_rt_dist.index))
-col_vals5 = [col_rt_dist.get(l, 0) for l in labels5]
-nyc_vals5 = [nyc_rt_dist.get(l, 0) for l in labels5]
-xpos5 = np.arange(len(labels5))
-ax.bar(xpos5 - 0.2, col_vals5, 0.4, label="Columbus", color="#2b6cb0")
-ax.bar(xpos5 + 0.2, nyc_vals5, 0.4, label="NYC", color="#c05621")
-ax.set_xticks(xpos5)
-ax.set_xticklabels(labels5, rotation=20, ha="right")
-ax.set_ylabel("% of listings")
-ax.set_title("Room Type Distribution: Columbus vs NYC")
-ax.legend()
-plt.tight_layout()
-plt.savefig(f"{OUT_DIR}/05_room_type_distribution.png", dpi=120)
-plt.close()
 
-print("\nDONE - all 5 PNGs written to", OUT_DIR)
+def main():
+    ensure_files()
+    os.makedirs(OUT, exist_ok=True)
+    summary = {}
+    frames = {}
+    cleaned = {}
+    for city, (name, _url, date) in FILES.items():
+        raw = load_raw(DATA / name)
+        kept, lo, hi = clean_prices(raw)
+        frames[city] = raw
+        cleaned[city] = kept
+        summary[city] = {
+            "date": date,
+            "rows": int(len(raw)),
+            "priced_rows": int((raw["price_clean"] > 0).sum()),
+            "clean_rows": int(len(kept)),
+            "price_floor": round(lo, 2),
+            "price_cap": round(hi, 2),
+            "mean_price": round(float(kept["price_clean"].mean()), 2),
+            "median_price": round(float(kept["price_clean"].median()), 2),
+            "host_total_null_pct": round(float(raw["host_total_listings_count"].isna().mean() * 100), 1),
+            "calculated_null_pct": round(float(raw["calculated_host_listings_count"].isna().mean() * 100), 1),
+            "bathrooms_null_pct": round(float(raw["bathrooms"].isna().mean() * 100), 1),
+            "hosts": host_split(raw),
+            "room_mix_pct": room_mix(raw).to_dict(),
+        }
+        top_median = neighborhood_table(kept).head(5)
+        open_cal = neighborhood_table(kept).sort_values("median_open", ascending=False).head(5)
+        corr, by_room = price_drivers(kept)
+        summary[city]["top_median_price"] = [
+            {"neighbourhood": idx, "n": int(row.n), "median": round(float(row.median_price), 2), "mean": round(float(row.mean_price), 2)}
+            for idx, row in top_median.iterrows()
+        ]
+        summary[city]["most_open"] = [
+            {"neighbourhood": idx, "n": int(row.n), "median_open": round(float(row.median_open), 1), "median_price": round(float(row.median_price), 2)}
+            for idx, row in open_cal.iterrows()
+        ]
+        summary[city]["corr"] = {k: round(float(v), 3) for k, v in corr.items()}
+        summary[city]["price_by_room"] = [
+            {"room_type": idx, "median": round(float(row["median"]), 2), "mean": round(float(row["mean"]), 2), "n": int(row["count"])}
+            for idx, row in by_room.iterrows()
+        ]
+
+    colors = {"Columbus": "#2b6cb0", "New York": "#c05621"}
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    for ax, city in zip(axes, ["Columbus", "New York"]):
+        table = neighborhood_table(cleaned[city]).head(10).sort_values("median_price")
+        ax.barh(table.index, table["median_price"], color=colors[city])
+        ax.set_title(f"{city}: median night, {MIN_N}+ listings")
+        ax.set_xlabel("Median nightly price ($)")
+    fig.tight_layout()
+    fig.savefig(OUT / "01_price_by_neighborhood.png", dpi=120)
+    plt.close()
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    for ax, city in zip(axes, ["Columbus", "New York"]):
+        table = neighborhood_table(cleaned[city]).sort_values("median_open").tail(10)
+        ax.barh(table.index, table["median_open"], color=colors[city])
+        ax.set_title(f"{city}: most open calendars, {MIN_N}+ listings")
+        ax.set_xlabel("Median open nights in the next 365")
+    fig.tight_layout()
+    fig.savefig(OUT / "02_price_vs_availability.png", dpi=120)
+    plt.close()
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+    for ax, city in zip(axes, ["Columbus", "New York"]):
+        hosts = summary[city]["hosts"]
+        ax.pie(
+            [hosts["single"], hosts["multi"]],
+            labels=["One listing in this city", "More than one"],
+            autopct="%1.0f%%",
+            colors=[colors[city], "#cbd5e0"],
+        )
+        ax.set_title(f"{city} hosts")
+    fig.tight_layout()
+    fig.savefig(OUT / "03_host_concentration.png", dpi=120)
+    plt.close()
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    labels = sorted(set(cleaned["Columbus"]["room_type"]) | set(cleaned["New York"]["room_type"]))
+    xpos = np.arange(len(labels))
+    width = 0.35
+    for offset, city in ((-width / 2, "Columbus"), (width / 2, "New York")):
+        medians = cleaned[city].groupby("room_type")["price_clean"].median()
+        ax.bar(xpos + offset, [medians.get(label, 0) for label in labels], width, label=city, color=colors[city])
+    ax.set_xticks(xpos)
+    ax.set_xticklabels(labels, rotation=20, ha="right")
+    ax.set_ylabel("Median nightly price ($)")
+    ax.set_title("Median price by room type")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(OUT / "04_price_by_room_type.png", dpi=120)
+    plt.close()
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    labels = sorted(set(frames["Columbus"]["room_type"]) | set(frames["New York"]["room_type"]))
+    xpos = np.arange(len(labels))
+    for offset, city in ((-0.2, "Columbus"), (0.2, "New York")):
+        mix = frames[city]["room_type"].value_counts(normalize=True) * 100
+        ax.bar(xpos + offset, [mix.get(label, 0) for label in labels], 0.4, label=city, color=colors[city])
+    ax.set_xticks(xpos)
+    ax.set_xticklabels(labels, rotation=20, ha="right")
+    ax.set_ylabel("% of listings")
+    ax.set_title("Room type")
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(OUT / "05_room_type_distribution.png", dpi=120)
+    plt.close()
+    print(json.dumps(summary, indent=2))
+
+
+if __name__ == "__main__":
+    main()
