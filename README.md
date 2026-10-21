@@ -1,53 +1,34 @@
-# Airbnb Market Analysis: Columbus vs New York
+# Columbus and New York
 
-## Author
-[Reid Fournier]
+[Reid Fournier](https://github.com/reidfournier). Miami University.
 
-## Project Overview
-I built this to compare the Columbus, Ohio and New York City Airbnb markets using real listing data. My goal was to help a prospective host or investor decide which market offers stronger return potential, informing decisions on pricing strategy, listing type, and neighborhood selection based on real demand, competition, and host concentration patterns in each city.
+Two Inside Airbnb files.
 
-## Research Questions
+- Columbus: 2,877 listings. September 26, 2025.
+- New York: 30,259 listings. June 14, 2026.
 
-1. How do average nightly prices differ between Columbus and New York City across neighborhoods?
-2. Which neighborhoods in each city offer the highest availability relative to price?
-3. How concentrated is host ownership in each city (single-listing hosts vs multi-listing hosts)?
-4. What listing characteristics are most associated with higher prices in each market?
-5. How does room type distribution differ between Columbus and New York City?
+The December 4, 2025 New York file had no prices. That is Local Law 18. I used the June 14, 2026 file.
 
-## Data Source Mapping
+Inside Airbnb has newer files. Columbus is September 22, 2026. New York is September 14, 2026. This page is the older pair.
 
-| # | Question | Data Needed | Source | Data Type |
-|:-:|:---------|:------------|:-------|:----------|
-| 1 | Price differences by neighborhood | price, neighbourhood | listings.csv | Structured |
-| 2 | Availability vs price | availability_365, price, neighbourhood | calendar.csv, listings.csv | Structured |
-| 3 | Host ownership concentration | host_id, host_total_listings_count | listings.csv | Structured |
-| 4 | Drivers of higher prices | price, room_type, accommodates, bedrooms, reviews | listings.csv | Structured |
-| 5 | Room type distribution | room_type | listings.csv | Structured |
+The prices below drop listings at $0 and the cheapest and dearest 0.5% in each city. The figures are means.
 
-## Data Overview
-- **Columbus, Ohio:** 2,877 listings (as of Sept 26, 2025)
-- **New York City:** 30,259 listings (as of Jun 14, 2026 -- I originally planned to use the Dec 4, 2025 NYC snapshot, but found its price and host-listing-count data fully redacted, a known effect of NYC's Local Law 18 reporting rules, so I used the nearest snapshot with usable pricing data instead)
-- **Primary data source:** [Inside Airbnb](http://insideairbnb.com/get-the-data)
-- **Full analysis:** [airbnb_analysis.ipynb](airbnb_analysis.ipynb) (also runnable as [analysis.py](analysis.py))
+## What the files show
 
-## Key Findings
+New York's mean night is $252.62. Columbus is $137.12.
 
-Here's what I found:
+Hayden Run leads Columbus at $242.75. Fort Wadsworth leads New York at $1,010.33. That ranking has no minimum number of listings. A small neighborhood can lead.
 
-**1. Price by neighborhood** -- NYC's overall average nightly price (~$253) is nearly double Columbus's (~$137). Priciest NYC areas run well above Columbus's priciest (Hayden Run, ~$243).
+Guest capacity tracks price. In Columbus the correlation is 0.65. In New York it is 0.49. Bedrooms and bathrooms come next. Review count does not.
 
-**2. Availability vs price** -- In both cities, I found the best availability-per-dollar neighborhoods are outer, less-central ones (Greenlawn/Frank Road in Columbus; Co-op City and Olinville in NYC).
+Columbus is 83.7% entire homes. New York is 53.7% entire homes, 43.3% private rooms, and 2.2% hotel rooms. A New York hotel room averages $549.21.
 
-**3. Host concentration** -- Columbus: only 36% of hosts run a single listing, and multi-listing hosts control 86.5% of all Columbus listings. NYC: hosts with more than one listing in the dataset account for 62.7% of listings.
+## What the files do not show
 
-**4. Price drivers** -- `accommodates` (guest capacity) is the strongest price driver in both cities, followed by bedrooms and bathrooms. Review scores/counts barely correlate with price. NYC hotel-room listings (~$549/night) are the priciest room type in either city.
+There is no revenue, no occupancy, and no expenses. Open nights are not booked nights. A neighborhood with many open nights and a low price is often an empty calendar.
 
-**5. Room type mix** -- Columbus is dominated by entire-home/apt listings (83.7%). NYC is far more mixed -- 53.7% entire home/apt, 43.3% private room, plus a small hotel-room segment (2.2%).
+The host figures use two methods. Columbus uses each host's total listings anywhere. 36.2% of those hosts have one listing. Hosts with more than one listing anywhere hold 86.5% of the Columbus rows. New York's total-listings field is empty. The New York figure counts hosts inside this file only. 62.7% of New York rows belong to a host who appears more than once here. Those two percentages are not the same measure.
 
-## Project Status
-- [x] Initial data exploration
-- [x] Research questions defined
-- [x] Data sources mapped
-- [x] Data downloaded and cleaned
-- [x] Analysis complete
-- [x] Visualizations created
+## Files
+
+The notebook and the five charts are the record. `analysis.py` points at a data folder on my computer. That folder is not in this repo.
